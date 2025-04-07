@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -18,6 +17,8 @@ import CategorySelect from "./CategorySelect";
 import Scanner from "./Scanner";
 import { Barcode, Plus } from "lucide-react";
 import { useLists } from "@/context/ListContext";
+import { fetchProductByBarcode } from "@/services/productApi";
+import { toast } from "@/components/ui/use-toast";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -60,19 +61,44 @@ const NewItemForm: React.FC<NewItemFormProps> = ({ listId }) => {
     form.reset();
   };
 
-  const handleBarcodeDetected = (barcode: string) => {
-    // Em uma aplicação real, isso faria uma chamada a uma API de produtos
-    // Para simular, vamos preencher com dados fictícios
-    const mockProductData = {
-      name: "Produto " + barcode.substring(0, 4),
-      category: "Alimentação" as Category,
-      price: parseFloat((Math.random() * 20 + 5).toFixed(2)),
-    };
-
-    form.setValue("barcode", barcode);
-    form.setValue("name", mockProductData.name);
-    form.setValue("category", mockProductData.category);
-    form.setValue("price", mockProductData.price);
+  const handleBarcodeDetected = async (barcode: string) => {
+    // Mostrar loading ou algo similar aqui, se desejar
+    
+    try {
+      // Buscar produto pelo código de barras
+      const productData = await fetchProductByBarcode(barcode);
+      
+      if (productData) {
+        // Preencher o formulário com os dados do produto
+        form.setValue("barcode", barcode);
+        form.setValue("name", productData.name);
+        form.setValue("category", productData.category);
+        if (productData.price) {
+          form.setValue("price", productData.price);
+        }
+        
+        toast({
+          title: "Produto encontrado",
+          description: `${productData.name} adicionado automaticamente.`,
+        });
+      } else {
+        // Se não encontrou o produto, apenas preenche o código
+        form.setValue("barcode", barcode);
+        toast({
+          title: "Código reconhecido",
+          description: "Preencha os detalhes do produto manualmente.",
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao buscar produto:", error);
+      form.setValue("barcode", barcode);
+      toast({
+        title: "Erro ao buscar produto",
+        description: "Preencha os detalhes do produto manualmente.",
+        variant: "destructive",
+      });
+    }
     
     setShowScanner(false);
   };

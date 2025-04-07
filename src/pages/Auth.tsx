@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, LogIn, UserPlus } from "lucide-react";
 import { useLists } from "@/context/ListContext";
+import { AuthError } from "@supabase/supabase-js";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -38,11 +39,11 @@ const Auth = () => {
       if (error) throw error;
 
       // A navegação é manipulada pelo onAuthStateChange no ListContext
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro no login:", error);
       toast({
         title: "Erro no login",
-        description: error.message,
+        description: error instanceof AuthError ? error.message : "Ocorreu um erro ao fazer login. Por favor, tente mais tarde.",
         variant: "destructive",
       });
     } finally {
@@ -55,8 +56,8 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // Registrar o usuário - o perfil será criado automaticamente pelo gatilho
-      const { error } = await supabase.auth.signUp({
+      // Registrar o usuário
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -68,17 +69,33 @@ const Auth = () => {
 
       if (error) throw error;
 
+      // Criar perfil manualmente
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            name: name,
+            email: email
+          });
+
+        if (profileError) {
+          console.error("Erro ao criar perfil:", profileError);
+          throw profileError;
+        }
+      }
+
       toast({
         title: "Conta criada com sucesso!",
         description: "Bem-vindo(a) ao Lista Inteligente!",
       });
 
       // A navegação é manipulada pelo onAuthStateChange no ListContext
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro no cadastro:", error);
       toast({
         title: "Erro no cadastro",
-        description: error.message,
+        description: error instanceof AuthError ? error.message : "Ocorreu um erro ao criar a conta. Por favor, tente mais tarde.",
         variant: "destructive",
       });
     } finally {
