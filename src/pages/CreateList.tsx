@@ -50,12 +50,12 @@ const CreateList = () => {
     }
   };
 
-  const colorOptions: { value: ShoppingList["color"]; label: string }[] = [
-    { value: "green", label: "Verde" },
-    { value: "blue", label: "Azul" },
-    { value: "purple", label: "Roxo" },
-    { value: "orange", label: "Laranja" },
-    { value: "pink", label: "Rosa" },
+  const colorOptions: { value: ShoppingList["color"]; label: string; bgClass: string }[] = [
+    { value: "green", label: "Verde", bgClass: "bg-green-500" },
+    { value: "blue", label: "Azul", bgClass: "bg-blue-500" },
+    { value: "purple", label: "Roxo", bgClass: "bg-purple-500" },
+    { value: "orange", label: "Laranja", bgClass: "bg-orange-500" },
+    { value: "pink", label: "Rosa", bgClass: "bg-pink-500" },
   ];
 
   return (
@@ -100,12 +100,12 @@ const CreateList = () => {
                     <RadioGroup
                       onValueChange={field.onChange}
                       value={field.value}
-                      className="flex flex-wrap gap-3"
+                      className="grid grid-cols-2 md:grid-cols-3 gap-3"
                     >
                       {colorOptions.map((color) => (
                         <FormItem
                           key={color.value}
-                          className="flex-1 min-w-[80px]"
+                          className="flex-1"
                         >
                           <FormControl>
                             <RadioGroupItem
@@ -123,10 +123,11 @@ const CreateList = () => {
                               cursor-pointer transition-all
                               peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10
                               peer-data-[state=checked]:shadow-sm
+                              w-full
                             `}
                           >
                             <div className="flex items-center justify-center">
-                              <div className={`w-4 h-4 rounded-full bg-${color.value}-500 mr-2`}></div>
+                              <div className={`w-4 h-4 rounded-full ${color.bgClass} mr-2`}></div>
                               <span>{color.label}</span>
                             </div>
                           </FormLabel>

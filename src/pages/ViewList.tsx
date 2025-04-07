@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -38,12 +37,19 @@ const ViewList = () => {
   const { lists, deleteList, shareList, refreshLists } = useLists();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
   const list = lists.find((list) => list.id === id);
 
   useEffect(() => {
+    if (!id) {
+      navigate("/");
+      return;
+    }
+    
     if (!list) {
+      console.log("Lista não encontrada, tentando atualizar...");
       // Tentar atualizar as listas
       refreshLists().catch(error => {
         console.error("Erro ao atualizar listas:", error);
@@ -57,27 +63,40 @@ const ViewList = () => {
       return;
     }
 
+    console.log("Lista encontrada:", list.id);
+    setLoading(false);
+
     // Carregar perfis de usuários para compartilhamento
     const loadProfiles = async () => {
-      // Buscar todos os perfis disponíveis (em um aplicativo real, isso seria limitado e com busca)
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, email, avatar');
+      try {
+        // Buscar todos os perfis disponíveis (em um aplicativo real, isso seria limitado e com busca)
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, name, email, avatar');
 
-      if (error) {
+        if (error) {
+          console.error("Erro ao carregar perfis:", error);
+          toast({
+            title: "Erro ao carregar usuários",
+            description: "Não foi possível carregar a lista de usuários para compartilhamento.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (data) {
+          console.log("Perfis carregados:", data.length);
+          setProfiles(data);
+        }
+      } catch (error) {
         console.error("Erro ao carregar perfis:", error);
-        return;
-      }
-
-      if (data) {
-        setProfiles(data);
       }
     };
 
     loadProfiles();
-  }, [list, navigate, refreshLists, toast]);
+  }, [id, list, navigate, refreshLists, toast]);
 
-  if (!list) {
+  if (loading || !list) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -100,8 +119,13 @@ const ViewList = () => {
 
   const handleShare = async (userId: string) => {
     try {
+      console.log("Compartilhando lista com usuário:", userId);
       await shareList(list.id, userId);
       setShareDialogOpen(false);
+      toast({
+        title: "Lista compartilhada",
+        description: "A lista foi compartilhada com sucesso.",
+      });
     } catch (error) {
       console.error("Erro ao compartilhar lista:", error);
       toast({
@@ -114,8 +138,13 @@ const ViewList = () => {
   
   const handleDelete = async () => {
     try {
+      console.log("Excluindo lista:", list.id);
       await deleteList(list.id);
       navigate("/");
+      toast({
+        title: "Lista excluída",
+        description: "A lista foi excluída com sucesso.",
+      });
     } catch (error) {
       console.error("Erro ao excluir lista:", error);
       toast({

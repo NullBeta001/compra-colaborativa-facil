@@ -41,7 +41,7 @@ const ListCard: React.FC<ListCardProps> = ({ list }) => {
         <div className="flex justify-between items-start">
           <h3 className="text-lg font-medium">{list.title}</h3>
           <Badge variant="outline" className="ml-1">
-            R$ {list.totalPrice.toFixed(2)}
+            R$ {list.totalPrice?.toFixed(2) || '0.00'}
           </Badge>
         </div>
         
@@ -55,11 +55,11 @@ const ListCard: React.FC<ListCardProps> = ({ list }) => {
         <div className="flex items-center">
           <Calendar className="h-3 w-3 mr-1" />
           <span>
-            {format(list.createdAt, "d 'de' MMM", { locale: ptBR })}
+            {format(new Date(list.createdAt), "d 'de' MMM", { locale: ptBR })}
           </span>
         </div>
         
-        {list.sharedWith.length > 0 && (
+        {list.sharedWith?.length > 0 && (
           <div className="flex items-center">
             <Users className="h-3 w-3 mr-1" />
             <span>Compartilhada ({list.sharedWith.length})</span>

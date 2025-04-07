@@ -1,11 +1,9 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { ShoppingList, Item, Category } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { User, Session } from "@supabase/supabase-js";
-import { v4 as uuidv4 } from 'uuid';
 
 interface ListContextType {
   lists: ShoppingList[];
@@ -36,9 +34,7 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Configurando autenticação
   useEffect(() => {
-    // Primeiro configuramos o listener de mudança de estado de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
@@ -54,7 +50,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    // Verificar se há uma sessão existente
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -69,29 +64,37 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Função para buscar as listas de compras do usuário
   const refreshLists = async () => {
     if (!user) return;
     
     setLoading(true);
     try {
-      // Buscar listas criadas pelo usuário
+      console.log("Refreshing lists for user:", user.id);
+      
       const { data: ownLists, error: ownListsError } = await supabase
         .from('shopping_lists')
         .select('*')
         .eq('user_id', user.id);
 
-      if (ownListsError) throw ownListsError;
+      if (ownListsError) {
+        console.error("Erro ao buscar listas próprias:", ownListsError);
+        throw ownListsError;
+      }
 
-      // Buscar listas compartilhadas com o usuário
+      console.log("Own lists fetched:", ownLists?.length || 0);
+
       const { data: sharedListIds, error: sharedError } = await supabase
         .from('list_shares')
         .select('list_id')
         .eq('user_id', user.id);
 
-      if (sharedError) throw sharedError;
+      if (sharedError) {
+        console.error("Erro ao buscar compartilhamentos:", sharedError);
+        throw sharedError;
+      }
 
-      // Se há listas compartilhadas, buscar seus detalhes
+      console.log("Shared list IDs fetched:", sharedListIds?.length || 0);
+
       let sharedLists = [];
       if (sharedListIds && sharedListIds.length > 0) {
         const listIds = sharedListIds.map(item => item.list_id);
@@ -100,58 +103,82 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
           .select('*')
           .in('id', listIds);
 
-        if (error) throw error;
-        if (shared) sharedLists = shared;
+        if (error) {
+          console.error("Erro ao buscar listas compartilhadas:", error);
+          throw error;
+        }
+        
+        if (shared) {
+          console.log("Shared lists fetched:", shared.length);
+          sharedLists = shared;
+        }
       }
 
-      // Combinar listas próprias e compartilhadas
       const allListsRaw = [...(ownLists || []), ...sharedLists];
+      console.log("Total lists to process:", allListsRaw.length);
       
-      // Buscar itens para cada lista
       const allLists = await Promise.all(allListsRaw.map(async (list) => {
-        const { data: items, error: itemsError } = await supabase
-          .from('list_items')
-          .select('*')
-          .eq('list_id', list.id);
+        try {
+          const { data: items, error: itemsError } = await supabase
+            .from('list_items')
+            .select('*')
+            .eq('list_id', list.id);
 
-        if (itemsError) throw itemsError;
+          if (itemsError) {
+            console.error(`Erro ao buscar itens para lista ${list.id}:`, itemsError);
+            throw itemsError;
+          }
 
-        // Buscar informações de compartilhamento
-        const { data: shares, error: sharesError } = await supabase
-          .from('list_shares')
-          .select('user_id')
-          .eq('list_id', list.id);
+          const { data: shares, error: sharesError } = await supabase
+            .from('list_shares')
+            .select('user_id')
+            .eq('list_id', list.id);
 
-        if (sharesError) throw sharesError;
+          if (sharesError) {
+            console.error(`Erro ao buscar compartilhamentos para lista ${list.id}:`, sharesError);
+            throw sharesError;
+          }
 
-        // Montar objeto ShoppingList
-        const shoppingList: ShoppingList = {
-          id: list.id,
-          title: list.title,
-          createdAt: new Date(list.created_at),
-          color: list.color as ShoppingList["color"],
-          totalPrice: parseFloat(list.total_price?.toString() || "0"),
-          items: items ? items.map(item => ({
-            id: item.id,
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price !== null ? Number(item.price) : undefined,
-            category: item.category as Category,
-            checked: item.checked,
-            barcode: item.barcode || undefined
-          })) : [],
-          sharedWith: shares ? shares.map(s => s.user_id) : []
-        };
+          const shoppingList: ShoppingList = {
+            id: list.id,
+            title: list.title,
+            createdAt: new Date(list.created_at),
+            color: list.color as ShoppingList["color"],
+            totalPrice: list.total_price ? parseFloat(list.total_price.toString()) : 0,
+            items: items ? items.map(item => ({
+              id: item.id,
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price !== null ? Number(item.price) : undefined,
+              category: item.category as Category,
+              checked: item.checked,
+              barcode: item.barcode || undefined
+            })) : [],
+            sharedWith: shares ? shares.map(s => s.user_id) : []
+          };
 
-        return shoppingList;
+          return shoppingList;
+        } catch (error) {
+          console.error(`Erro ao processar lista ${list.id}:`, error);
+          return {
+            id: list.id,
+            title: list.title,
+            createdAt: new Date(list.created_at),
+            color: list.color as ShoppingList["color"],
+            totalPrice: 0,
+            items: [],
+            sharedWith: []
+          };
+        }
       }));
 
+      console.log("All lists processed successfully:", allLists.length);
       setLists(allLists);
     } catch (error: any) {
       console.error("Erro ao buscar listas:", error.message);
       toast({
         title: "Erro ao carregar listas",
-        description: "Não foi possível carregar suas listas de compras",
+        description: "Não foi possível carregar suas listas de compras. Por favor, tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -160,9 +187,17 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const createList = async (title: string, color: ShoppingList["color"]): Promise<ShoppingList> => {
-    if (!user) throw new Error("Usuário não autenticado");
+    if (!user) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Você precisa estar logado para criar uma lista.",
+        variant: "destructive"
+      });
+      throw new Error("Usuário não autenticado");
+    }
     
-    // Inserir na tabela shopping_lists
+    console.log("Creating list:", { title, color, userId: user.id });
+    
     const { data, error } = await supabase
       .from('shopping_lists')
       .insert({
@@ -174,6 +209,7 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       .single();
 
     if (error) {
+      console.error("Error creating list:", error);
       toast({
         title: "Erro ao criar lista",
         description: error.message,
@@ -183,10 +219,18 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
     }
 
     if (!data) {
-      throw new Error("Falha ao criar lista: nenhum dado retornado");
+      const errorMsg = "Falha ao criar lista: nenhum dado retornado";
+      console.error(errorMsg);
+      toast({
+        title: "Erro ao criar lista",
+        description: "Ocorreu um erro no servidor. Por favor, tente novamente.",
+        variant: "destructive"
+      });
+      throw new Error(errorMsg);
     }
 
-    // Criar objeto ShoppingList para retorno
+    console.log("List created successfully:", data);
+
     const newList: ShoppingList = {
       id: data.id,
       title: data.title,
@@ -210,7 +254,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
   const addItemToList = async (listId: string, itemData: Omit<Item, "id">) => {
     if (!user) throw new Error("Usuário não autenticado");
     
-    // Inserir item na tabela list_items
     const { data, error } = await supabase
       .from('list_items')
       .insert({
@@ -238,7 +281,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       throw new Error("Falha ao adicionar item: nenhum dado retornado");
     }
 
-    // Atualizar estado local
     setLists(prev => 
       prev.map(list => {
         if (list.id === listId) {
@@ -260,7 +302,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       })
     );
     
-    // Atualizar o preço total da lista
     await updateListTotal(listId);
     
     toast({
@@ -272,7 +313,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
   const updateItem = async (listId: string, updatedItem: Item) => {
     if (!user) throw new Error("Usuário não autenticado");
     
-    // Atualizar item na tabela list_items
     const { error } = await supabase
       .from('list_items')
       .update({
@@ -294,7 +334,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
 
-    // Atualizar estado local
     setLists(prev => 
       prev.map(list => {
         if (list.id === listId) {
@@ -310,21 +349,18 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       })
     );
     
-    // Atualizar o preço total da lista
     await updateListTotal(listId);
   };
 
   const toggleItemCheck = async (listId: string, itemId: string) => {
     if (!user) throw new Error("Usuário não autenticado");
     
-    // Encontrar o estado atual do item
     const currentList = lists.find(list => list.id === listId);
     if (!currentList) return;
     
     const item = currentList.items.find(item => item.id === itemId);
     if (!item) return;
     
-    // Atualizar o estado do item
     const { error } = await supabase
       .from('list_items')
       .update({ checked: !item.checked })
@@ -339,7 +375,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
 
-    // Atualizar estado local
     setLists(prev => 
       prev.map(list => {
         if (list.id === listId) {
@@ -359,7 +394,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
   const removeItem = async (listId: string, itemId: string) => {
     if (!user) throw new Error("Usuário não autenticado");
     
-    // Remover item da tabela list_items
     const { error } = await supabase
       .from('list_items')
       .delete()
@@ -374,7 +408,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
 
-    // Atualizar estado local
     setLists(prev => 
       prev.map(list => {
         if (list.id === listId) {
@@ -387,7 +420,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       })
     );
     
-    // Atualizar o preço total da lista
     await updateListTotal(listId);
     
     toast({
@@ -399,7 +431,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
   const shareList = async (listId: string, userId: string) => {
     if (!user) throw new Error("Usuário não autenticado");
     
-    // Compartilhar lista adicionando na tabela list_shares
     const { error } = await supabase
       .from('list_shares')
       .insert({
@@ -408,7 +439,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       });
 
     if (error) {
-      // Verificar se é um erro de restrição única (já compartilhado)
       if (error.code === '23505') {
         toast({
           title: "Aviso",
@@ -425,7 +455,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
 
-    // Atualizar estado local
     setLists(prev => 
       prev.map(list => {
         if (list.id === listId && !list.sharedWith.includes(userId)) {
@@ -447,8 +476,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
   const deleteList = async (listId: string) => {
     if (!user) throw new Error("Usuário não autenticado");
     
-    // Remover lista da tabela shopping_lists
-    // As tabelas relacionadas serão automaticamente excluídas por causa da restrição ON DELETE CASCADE
     const { error } = await supabase
       .from('shopping_lists')
       .delete()
@@ -463,7 +490,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
 
-    // Atualizar estado local
     setLists(prev => prev.filter(list => list.id !== listId));
     if (currentList?.id === listId) {
       setCurrentList(null);
@@ -478,16 +504,13 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
   const updateListTotal = async (listId: string) => {
     if (!user) throw new Error("Usuário não autenticado");
     
-    // Encontrar a lista atual no estado
     const currentList = lists.find(list => list.id === listId);
     if (!currentList) return;
     
-    // Calcular o total de preço com base nos itens
     const totalPrice = currentList.items.reduce((acc, item) => {
       return acc + (item.price || 0) * item.quantity;
     }, 0);
     
-    // Atualizar o valor total na tabela shopping_lists
     const { error } = await supabase
       .from('shopping_lists')
       .update({ total_price: totalPrice })
@@ -498,7 +521,6 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Atualizar estado local
     setLists(prev => 
       prev.map(list => {
         if (list.id === listId) {
