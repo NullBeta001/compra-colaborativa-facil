@@ -47,10 +47,16 @@ const NewItemForm: React.FC<NewItemFormProps> = ({ listId }) => {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    addItemToList(listId, {
-      ...values,
+    const newItem: Omit<Item, "id"> = {
+      name: values.name,
+      quantity: values.quantity,
+      price: values.price,
+      category: values.category,
+      barcode: values.barcode,
       checked: false,
-    });
+    };
+    
+    addItemToList(listId, newItem);
     form.reset();
   };
 
