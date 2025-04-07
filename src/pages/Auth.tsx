@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent, CardFooter, CardTitle, CardDescription } from "@/components/ui/card";
@@ -56,8 +55,8 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // Registrar o usuário
-      const { data, error } = await supabase.auth.signUp({
+      // Registrar o usuário - o perfil será criado automaticamente pelo gatilho
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -68,21 +67,6 @@ const Auth = () => {
       });
 
       if (error) throw error;
-
-      // Criar perfil do usuário
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: data.user.id,
-              name: name,
-              email: email,
-            }
-          ]);
-
-        if (profileError) throw profileError;
-      }
 
       toast({
         title: "Conta criada com sucesso!",
