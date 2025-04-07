@@ -1,45 +1,53 @@
 
-import React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ShoppingCart, ArrowUp } from "lucide-react";
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingCart, LogOut, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useLists } from '@/context/ListContext';
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const isHome = location.pathname === "/";
-  
+  const { toast } = useToast();
+  const { user } = useLists();
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      toast({
+        title: "Erro ao sair",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Sessão encerrada",
+        description: "Você foi desconectado com sucesso."
+      });
+      navigate('/auth');
+    }
+  };
+
   return (
-    <nav className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border py-4 px-4">
-      <div className="container mx-auto flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          {!isHome ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate(-1)}
-              aria-label="Voltar"
-            >
-              <ArrowUp className="h-5 w-5 rotate-270 transform -rotate-90" />
-            </Button>
-          ) : (
-            <ShoppingCart className="h-6 w-6 text-primary" />
-          )}
-          <h1 className="text-xl font-semibold">
-            {isHome ? "Lista Inteligente" : ""}
-          </h1>
-        </div>
+    <header className="border-b">
+      <div className="container px-4 py-3 flex items-center justify-between">
+        <Link to="/" className="flex items-center">
+          <ShoppingCart className="h-6 w-6 text-primary mr-2" />
+          <span className="font-semibold text-lg">Lista Inteligente</span>
+        </Link>
         
-        {isHome && (
-          <Button
-            onClick={() => navigate("/create")}
-            className="bg-primary hover:bg-primary/90"
-          >
-            Nova Lista
-          </Button>
+        {user && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </Button>
+          </div>
         )}
       </div>
-    </nav>
+    </header>
   );
 };
 

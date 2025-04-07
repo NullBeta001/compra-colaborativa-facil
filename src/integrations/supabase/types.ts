@@ -9,7 +9,136 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      list_items: {
+        Row: {
+          barcode: string | null
+          category: string
+          checked: boolean
+          id: string
+          list_id: string
+          name: string
+          price: number | null
+          quantity: number
+        }
+        Insert: {
+          barcode?: string | null
+          category: string
+          checked?: boolean
+          id?: string
+          list_id: string
+          name: string
+          price?: number | null
+          quantity?: number
+        }
+        Update: {
+          barcode?: string | null
+          category?: string
+          checked?: boolean
+          id?: string
+          list_id?: string
+          name?: string
+          price?: number | null
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      list_shares: {
+        Row: {
+          id: string
+          list_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          list_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          list_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "list_shares_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "list_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar: string | null
+          email: string
+          id: string
+          name: string
+        }
+        Insert: {
+          avatar?: string | null
+          email: string
+          id: string
+          name: string
+        }
+        Update: {
+          avatar?: string | null
+          email?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      shopping_lists: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          title: string
+          total_price: number | null
+          user_id: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          title: string
+          total_price?: number | null
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          title?: string
+          total_price?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_lists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
