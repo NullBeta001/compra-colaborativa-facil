@@ -130,8 +130,16 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
           title: list.title,
           createdAt: new Date(list.created_at),
           color: list.color as ShoppingList["color"],
-          totalPrice: parseFloat(list.total_price || "0"),
-          items: items || [],
+          totalPrice: parseFloat(list.total_price?.toString() || "0"),
+          items: items ? items.map(item => ({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price !== null ? Number(item.price) : undefined,
+            category: item.category as Category,
+            checked: item.checked,
+            barcode: item.barcode || undefined
+          })) : [],
           sharedWith: shares ? shares.map(s => s.user_id) : []
         };
 
@@ -151,7 +159,7 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const createList = async (title: string, color: ShoppingList["color"]) => {
+  const createList = async (title: string, color: ShoppingList["color"]): Promise<ShoppingList> => {
     if (!user) throw new Error("Usuário não autenticado");
     
     // Inserir na tabela shopping_lists
@@ -174,12 +182,16 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
 
+    if (!data) {
+      throw new Error("Falha ao criar lista: nenhum dado retornado");
+    }
+
     // Criar objeto ShoppingList para retorno
     const newList: ShoppingList = {
       id: data.id,
       title: data.title,
       createdAt: new Date(data.created_at),
-      color: data.color,
+      color: data.color as ShoppingList["color"],
       totalPrice: 0,
       items: [],
       sharedWith: []
@@ -205,10 +217,10 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
         list_id: listId,
         name: itemData.name,
         quantity: itemData.quantity,
-        price: itemData.price,
+        price: itemData.price || null,
         category: itemData.category,
         checked: itemData.checked,
-        barcode: itemData.barcode
+        barcode: itemData.barcode || null
       })
       .select()
       .single();
@@ -222,6 +234,10 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
 
+    if (!data) {
+      throw new Error("Falha ao adicionar item: nenhum dado retornado");
+    }
+
     // Atualizar estado local
     setLists(prev => 
       prev.map(list => {
@@ -230,10 +246,10 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
             id: data.id,
             name: data.name,
             quantity: data.quantity,
-            price: data.price,
-            category: data.category,
+            price: data.price !== null ? Number(data.price) : undefined,
+            category: data.category as Category,
             checked: data.checked,
-            barcode: data.barcode
+            barcode: data.barcode || undefined
           };
           return {
             ...list,
@@ -262,10 +278,10 @@ export const ListProvider = ({ children }: { children: ReactNode }) => {
       .update({
         name: updatedItem.name,
         quantity: updatedItem.quantity,
-        price: updatedItem.price,
+        price: updatedItem.price || null,
         category: updatedItem.category,
         checked: updatedItem.checked,
-        barcode: updatedItem.barcode
+        barcode: updatedItem.barcode || null
       })
       .eq('id', updatedItem.id);
 

@@ -40,10 +40,14 @@ const CreateList = () => {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const newList = createList(values.title, values.color);
-    setCurrentList(newList);
-    navigate(`/list/${newList.id}`);
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      const newList = await createList(values.title, values.color);
+      setCurrentList(newList);
+      navigate(`/list/${newList.id}`);
+    } catch (error) {
+      console.error("Erro ao criar lista:", error);
+    }
   };
 
   const colorOptions: { value: ShoppingList["color"]; label: string }[] = [

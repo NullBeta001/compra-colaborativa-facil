@@ -16,26 +16,54 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { mockUsers } from "@/utils/mockData";
 import { useLists } from "@/context/ListContext";
 import NewItemForm from "@/components/NewItemForm";
 import ItemList from "@/components/ItemList";
 import Navbar from "@/components/Navbar";
 import { Share, Trash2, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Profile {
+  id: string;
+  name: string;
+  avatar?: string;
+  email: string;
+}
 
 const ViewList = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { lists, deleteList, shareList } = useLists();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   
   const list = lists.find((list) => list.id === id);
 
   useEffect(() => {
     if (!list) {
       navigate("/");
+      return;
     }
+
+    // Carregar perfis de usuários para compartilhamento
+    const loadProfiles = async () => {
+      // Buscar todos os perfis disponíveis (em um aplicativo real, isso seria limitado e com busca)
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, email, avatar');
+
+      if (error) {
+        console.error("Erro ao carregar perfis:", error);
+        return;
+      }
+
+      if (data) {
+        setProfiles(data);
+      }
+    };
+
+    loadProfiles();
   }, [list, navigate]);
 
   if (!list) {
@@ -43,13 +71,13 @@ const ViewList = () => {
   }
 
   // Encontrar os usuários que compartilham esta lista
-  const sharedUsers = mockUsers.filter(user => 
-    list.sharedWith.includes(user.id)
+  const sharedUsers = profiles.filter(profile => 
+    list.sharedWith.includes(profile.id)
   );
   
   // Usuários que ainda não compartilham esta lista
-  const availableUsers = mockUsers.filter(user => 
-    !list.sharedWith.includes(user.id) && user.id !== "user-1" // user-1 é o usuário atual
+  const availableUsers = profiles.filter(profile => 
+    !list.sharedWith.includes(profile.id) && profile.id !== list.id // não é o dono da lista
   );
 
   const handleShare = (userId: string) => {
