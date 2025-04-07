@@ -23,6 +23,7 @@ import Navbar from "@/components/Navbar";
 import { Share, Trash2, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Profile {
   id: string;
@@ -34,15 +35,25 @@ interface Profile {
 const ViewList = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { lists, deleteList, shareList } = useLists();
+  const { lists, deleteList, shareList, refreshLists } = useLists();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const { toast } = useToast();
   
   const list = lists.find((list) => list.id === id);
 
   useEffect(() => {
     if (!list) {
-      navigate("/");
+      // Tentar atualizar as listas
+      refreshLists().catch(error => {
+        console.error("Erro ao atualizar listas:", error);
+        toast({
+          title: "Erro ao carregar lista",
+          description: "Não foi possível encontrar a lista solicitada.",
+          variant: "destructive"
+        });
+        navigate("/");
+      });
       return;
     }
 
@@ -64,10 +75,17 @@ const ViewList = () => {
     };
 
     loadProfiles();
-  }, [list, navigate]);
+  }, [list, navigate, refreshLists, toast]);
 
   if (!list) {
-    return null;
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container px-4 py-6 mx-auto max-w-md flex items-center justify-center h-[50vh]">
+          <p className="text-muted-foreground">Carregando lista...</p>
+        </div>
+      </div>
+    );
   }
 
   // Encontrar os usuários que compartilham esta lista
@@ -80,14 +98,32 @@ const ViewList = () => {
     !list.sharedWith.includes(profile.id) && profile.id !== list.id // não é o dono da lista
   );
 
-  const handleShare = (userId: string) => {
-    shareList(list.id, userId);
-    setShareDialogOpen(false);
+  const handleShare = async (userId: string) => {
+    try {
+      await shareList(list.id, userId);
+      setShareDialogOpen(false);
+    } catch (error) {
+      console.error("Erro ao compartilhar lista:", error);
+      toast({
+        title: "Erro ao compartilhar lista",
+        description: "Não foi possível compartilhar a lista.",
+        variant: "destructive"
+      });
+    }
   };
   
-  const handleDelete = () => {
-    deleteList(list.id);
-    navigate("/");
+  const handleDelete = async () => {
+    try {
+      await deleteList(list.id);
+      navigate("/");
+    } catch (error) {
+      console.error("Erro ao excluir lista:", error);
+      toast({
+        title: "Erro ao excluir lista",
+        description: "Não foi possível excluir a lista.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -141,7 +177,7 @@ const ViewList = () => {
                           <div key={user.id} className="flex items-center p-2 bg-secondary/50 rounded-md">
                             <Avatar className="h-8 w-8 mr-2">
                               <AvatarImage src={user.avatar} alt={user.name} />
-                              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                              <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <span>{user.name}</span>
                           </div>
@@ -163,7 +199,7 @@ const ViewList = () => {
                           >
                             <Avatar className="h-6 w-6 mr-2">
                               <AvatarImage src={user.avatar} alt={user.name} />
-                              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                              <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <span>{user.name}</span>
                           </Button>
@@ -199,7 +235,7 @@ const ViewList = () => {
               {sharedUsers.map(user => (
                 <Avatar key={user.id} className="border-2 border-background h-6 w-6">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
               ))}
             </div>

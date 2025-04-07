@@ -118,15 +118,15 @@ const CreateList = () => {
                             htmlFor={color.value}
                             className={`
                               flex items-center justify-center p-3 rounded-lg border-2
-                              border-list-${color.value}/30 bg-list-${color.value}/10 
-                              hover:bg-list-${color.value}/20 hover:border-list-${color.value}/50
+                              border-muted bg-background
+                              hover:bg-muted/20 hover:border-primary/50
                               cursor-pointer transition-all
-                              peer-data-[state=checked]:border-list-${color.value} peer-data-[state=checked]:bg-list-${color.value}/20
+                              peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10
                               peer-data-[state=checked]:shadow-sm
                             `}
                           >
                             <div className="flex items-center justify-center">
-                              <div className={`w-4 h-4 rounded-full bg-list-${color.value} mr-2`}></div>
+                              <div className={`w-4 h-4 rounded-full bg-${color.value}-500 mr-2`}></div>
                               <span>{color.label}</span>
                             </div>
                           </FormLabel>

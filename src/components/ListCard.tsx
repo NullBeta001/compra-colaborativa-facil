@@ -21,10 +21,21 @@ const ListCard: React.FC<ListCardProps> = ({ list }) => {
     navigate(`/list/${list.id}`);
   };
 
+  // Mapeamento de cores para classes Tailwind
+  const colorClasses: Record<string, { border: string, shadow: string }> = {
+    green: { border: "border-green-500", shadow: "shadow-green-100" },
+    blue: { border: "border-blue-500", shadow: "shadow-blue-100" },
+    purple: { border: "border-purple-500", shadow: "shadow-purple-100" },
+    orange: { border: "border-orange-500", shadow: "shadow-orange-100" },
+    pink: { border: "border-pink-500", shadow: "shadow-pink-100" }
+  };
+
+  const colorClass = colorClasses[list.color] || colorClasses.green;
+
   return (
     <Card 
       onClick={handleClick}
-      className={`border-l-4 border-list-${list.color} cursor-pointer hover:shadow-md transition-shadow list-card-shadow animate-fade-in`}
+      className={`border-l-4 ${colorClass.border} cursor-pointer hover:shadow-md transition-shadow ${colorClass.shadow} animate-fade-in`}
     >
       <CardContent className="p-4">
         <div className="flex justify-between items-start">
