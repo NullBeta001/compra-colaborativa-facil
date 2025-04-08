@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Alert, Box, Button, CircularProgress, Typography, Slider } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Typography, Slider, Stack } from '@mui/material';
 import * as Quagga from 'quagga';
 
 interface ScannerProps {
@@ -14,6 +14,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onDetected, onClose }) => {
   const [zoom, setZoom] = useState(1);
   const scannerRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraCaptureRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     return () => {
@@ -37,10 +39,6 @@ export const Scanner: React.FC<ScannerProps> = ({ onDetected, onClose }) => {
             facingMode: 'environment', // Usar a câmera traseira
             width: 1280,
             height: 720,
-            // Desativar aspectRatio para melhor qualidade
-            advanced: [{ 
-              zoom: zoom 
-            }],
           },
           area: {
             // Definir uma área menor para o scanner focar no centro da tela
@@ -108,7 +106,9 @@ export const Scanner: React.FC<ScannerProps> = ({ onDetected, onClose }) => {
             if (result.boxes) {
               drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
               result.boxes.forEach((box) => {
-                if (box !== result.box) {
+                // Verificar se box não é o box principal (que é do tipo QuaggaBox)
+                // usando uma comparação mais segura
+                if (!(result.box && box[0] === result.box.x && box[1] === result.box.y)) {
                   drawingCtx.strokeStyle = "green";
                   drawingCtx.lineWidth = 2;
                   drawingCtx.strokeRect(box[0], box[1], box[2] - box[0], box[3] - box[1]);
@@ -165,17 +165,68 @@ export const Scanner: React.FC<ScannerProps> = ({ onDetected, onClose }) => {
     const zoomValue = newValue as number;
     setZoom(zoomValue);
     
-    // Tentar aplicar zoom ao stream atual, se disponível
-    if (streamRef.current) {
-      const videoTrack = streamRef.current.getVideoTracks()[0];
-      if (videoTrack && videoTrack.getCapabilities && videoTrack.getCapabilities().zoom) {
-        const capabilities = videoTrack.getCapabilities();
-        if (capabilities.zoom) {
-          const constraints = { advanced: [{ zoom: zoomValue }] };
-          videoTrack.applyConstraints(constraints)
-            .catch(e => console.error('Erro ao aplicar zoom:', e));
-        }
+    // Zoom não é aplicado automaticamente pois a propriedade zoom não 
+    // é padrão em MediaTrackCapabilities
+  };
+
+  // Processar imagem usando Quagga para detecção de código de barras
+  const processImage = (imageUrl: string) => {
+    setError(null);
+    setInitializing(true);
+    
+    Quagga.decodeSingle({
+      decoder: {
+        readers: [
+          'ean_reader',
+          'ean_8_reader', 
+          'code_128_reader',
+          'code_39_reader',
+          'code_93_reader',
+          'upc_reader'
+        ],
+        multiple: false
+      },
+      locate: true,
+      src: imageUrl
+    }, (result) => {
+      setInitializing(false);
+      
+      if (result && result.codeResult && result.codeResult.code) {
+        console.log('Código detectado da imagem:', result.codeResult.code);
+        onDetected(result.codeResult.code);
+      } else {
+        setError('Não foi possível detectar um código de barras nesta imagem. Tente novamente com uma imagem mais nítida.');
       }
+    });
+  };
+
+  // Manipular seleção de imagem
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      const imageUrl = URL.createObjectURL(file);
+      processImage(imageUrl);
+    }
+  };
+
+  // Manipular captura da câmera
+  const handleCameraCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      const imageUrl = URL.createObjectURL(file);
+      processImage(imageUrl);
+    }
+  };
+
+  const triggerCameraCapture = () => {
+    if (cameraCaptureRef.current) {
+      cameraCaptureRef.current.click();
+    }
+  };
+
+  const triggerFileSelect = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
@@ -221,20 +272,61 @@ export const Scanner: React.FC<ScannerProps> = ({ onDetected, onClose }) => {
       )}
 
       {!scanning && !initializing && (
-        <Button 
-          variant="contained" 
-          color="primary" 
-          onClick={startScanner} 
-          sx={{ mb: 2 }}
-        >
-          Escanear Código
-        </Button>
+        <Stack spacing={1} sx={{ width: '100%', mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'medium', textAlign: 'center', mb: 1 }}>
+            Escolha uma opção:
+          </Typography>
+          
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={triggerCameraCapture}
+            sx={{ mb: 1 }}
+          >
+            Usar Câmera do Dispositivo
+          </Button>
+          
+          <Button 
+            variant="contained" 
+            color="secondary"
+            onClick={triggerFileSelect}
+            sx={{ mb: 1 }}
+          >
+            Selecionar Imagem da Galeria
+          </Button>
+          
+          <Button 
+            variant="outlined" 
+            onClick={startScanner}
+          >
+            Escaneamento em Tempo Real
+          </Button>
+          
+          {/* Input oculto para captura de câmera */}
+          <input
+            ref={cameraCaptureRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleCameraCapture}
+            style={{ display: 'none' }}
+          />
+          
+          {/* Input oculto para seleção de arquivo */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+          />
+        </Stack>
       )}
 
       {initializing && (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 2 }}>
           <CircularProgress size={40} sx={{ mb: 1 }} />
-          <Typography>Inicializando câmera...</Typography>
+          <Typography>Processando...</Typography>
         </Box>
       )}
 

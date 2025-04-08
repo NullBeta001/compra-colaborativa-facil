@@ -10,7 +10,7 @@ declare module 'quagga' {
         facingMode?: string;
         advanced?: Array<{
           zoom?: number;
-          [key: string]: any;
+          [key: string]: unknown;
         }>;
       };
       area?: {
@@ -51,6 +51,7 @@ declare module 'quagga' {
     };
     debug?: boolean;
     frequency?: number;
+    src?: string;
   }
 
   interface QuaggaBox {
