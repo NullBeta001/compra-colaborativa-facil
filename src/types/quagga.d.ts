@@ -8,6 +8,10 @@ declare module 'quagga' {
         width?: number;
         height?: number;
         facingMode?: string;
+        advanced?: Array<{
+          zoom?: number;
+          [key: string]: any;
+        }>;
       };
       area?: {
         top?: string;
@@ -49,10 +53,37 @@ declare module 'quagga' {
     frequency?: number;
   }
 
+  interface QuaggaBox {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }
+
+  interface QuaggaProcessedResult {
+    boxes?: number[][];
+    box?: QuaggaBox;
+    codeResult?: {
+      code?: string;
+      format?: string;
+    };
+  }
+
   interface QuaggaResult {
     codeResult?: {
       code?: string;
       format?: string;
+    };
+  }
+
+  interface QuaggaCanvasContext {
+    ctx: {
+      overlay: CanvasRenderingContext2D;
+      image: CanvasRenderingContext2D;
+    };
+    dom: {
+      overlay: HTMLCanvasElement;
+      image: HTMLCanvasElement;
     };
   }
 
@@ -71,11 +102,12 @@ declare module 'quagga' {
     stop(): void;
     onDetected(callback: (result: QuaggaResult) => void): void;
     offDetected(callback: (result: QuaggaResult) => void): void;
-    onProcessed(callback: (result: unknown) => void): void;
+    onProcessed(callback: (result: QuaggaProcessedResult) => void): void;
     decodeSingle(
       config: QuaggaConfig,
       callback?: (result: QuaggaResult) => void
     ): void;
+    canvas: QuaggaCanvasContext;
   }
 
   const Quagga: Quagga;
