@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Category, Item } from "@/types";
 import CategorySelect from "./CategorySelect";
-import Scanner from "./Scanner";
+import { Scanner } from "./Scanner";
 import { Barcode, Plus } from "lucide-react";
 import { useLists } from "@/context/ListContext";
 import { fetchProductByBarcode } from "@/services/productApi";
@@ -107,14 +107,10 @@ const NewItemForm: React.FC<NewItemFormProps> = ({ listId }) => {
     <div className="p-4 bg-card rounded-lg shadow-sm mb-6 animate-fade-in">
       {showScanner ? (
         <div>
-          <Scanner onDetected={handleBarcodeDetected} />
-          <Button 
-            variant="outline" 
-            className="w-full mt-2" 
-            onClick={() => setShowScanner(false)}
-          >
-            Cancelar Escaneamento
-          </Button>
+          <Scanner 
+            onDetected={handleBarcodeDetected} 
+            onClose={() => setShowScanner(false)}
+          />
         </div>
       ) : (
         <Form {...form}>
